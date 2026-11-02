@@ -1,7 +1,5 @@
 """Conversations belong to the caller, and only to the caller."""
 
-from __future__ import annotations
-
 from uuid import uuid4
 
 import pytest

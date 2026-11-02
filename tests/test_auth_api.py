@@ -1,7 +1,5 @@
 """The auth surface: register, log in, refresh, and read yourself."""
 
-from __future__ import annotations
-
 from uuid import uuid4
 
 import pytest

@@ -1,7 +1,5 @@
 """The small helpers in base.tools, which everything else leans on."""
 
-from __future__ import annotations
-
 import asyncio
 from uuid import UUID, uuid4
 

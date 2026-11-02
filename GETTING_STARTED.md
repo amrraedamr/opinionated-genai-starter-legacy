@@ -97,7 +97,7 @@ The following five commands take you from cold start to streaming a chat respons
 
 ```bash
 # 1. Register a user
-curl -sS -X POST http://localhost:8000/api/auth/register \
+curl -sS -X POST http://localhost:8000/api/7r/auth/register \
   -H 'Content-Type: application/json' \
   -d '{
     "email": "demo@example.com",
@@ -107,26 +107,26 @@ curl -sS -X POST http://localhost:8000/api/auth/register \
   }'
 
 # 2. Log in and capture the access token
-ACCESS_TOKEN=$(curl -sS -X POST http://localhost:8000/api/auth/login \
+ACCESS_TOKEN=$(curl -sS -X POST http://localhost:8000/api/7r/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email": "demo@example.com", "password": "Demo!Pass123"}' \
   | python -c 'import sys, json; print(json.load(sys.stdin)["data"]["accessToken"])')
 
 # 3. Create a conversation
-CONVERSATION_ID=$(curl -sS -X POST http://localhost:8000/api/conversations \
+CONVERSATION_ID=$(curl -sS -X POST http://localhost:8000/api/7r/conversations \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"title": "Smoke test"}' \
   | python -c 'import sys, json; print(json.load(sys.stdin)["data"]["conversationId"])')
 
 # 4. Send a non-streaming message
-curl -sS -X POST "http://localhost:8000/api/conversations/$CONVERSATION_ID/messages" \
+curl -sS -X POST "http://localhost:8000/api/7r/conversations/$CONVERSATION_ID/messages" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"content": "Say hi in one short sentence."}'
 
 # 5. List the messages so far
-curl -sS "http://localhost:8000/api/conversations/$CONVERSATION_ID/messages" \
+curl -sS "http://localhost:8000/api/7r/conversations/$CONVERSATION_ID/messages" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
@@ -134,7 +134,7 @@ For SSE streaming, set `?streaming=true` and use `curl -N` so it doesn't buffer:
 
 ```bash
 curl -N -X POST \
-  "http://localhost:8000/api/conversations/$CONVERSATION_ID/messages?streaming=true" \
+  "http://localhost:8000/api/7r/conversations/$CONVERSATION_ID/messages?streaming=true" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"content": "Tell me a one-line joke about Python."}'
@@ -165,7 +165,7 @@ async def list_items(current_user: UserDTO = validate_user_dependency) -> list[s
     return ["one", "two", "three"]
 ```
 
-It's now mounted at `/api/items` after the next reload.
+It's now mounted at `/api/7r/items` after the next reload.
 
 ### Register a prompt
 

@@ -5,8 +5,6 @@ and pytest imports test modules before any fixture runs. So the environment is
 set here at conftest import, which is earlier than any of that.
 """
 
-from __future__ import annotations
-
 import atexit
 import os
 import pathlib

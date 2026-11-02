@@ -37,8 +37,7 @@ class Settings(BaseSettings, metaclass=SingletonSettings):
     max_gunicorn_workers: int = 2
 
     # Auth
-    api_prefix: str = "/api"
-    """Mounted under this. Change it and every route moves with it."""
+    api_prefix: str = "/api/7r"
 
     auth_private_key_path: str = "keys/private.pem"
     auth_public_key_path: str = "keys/public.pem"
