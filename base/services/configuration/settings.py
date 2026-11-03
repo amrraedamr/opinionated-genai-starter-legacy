@@ -35,8 +35,20 @@ class Settings(BaseSettings, metaclass=SingletonSettings):
     app_name: str = "opinionated-genai-starter"
     environment: str = "local"
     max_gunicorn_workers: int = 2
+    max_request_body_bytes: int = Field(default=1_048_576, gt=0)
+    max_chat_input_chars: int = Field(default=12_000, gt=0)
+    rate_limit_requests: int = Field(default=60, gt=0)
+    rate_limit_window_seconds: int = Field(default=60, gt=0)
+    max_concurrent_requests_per_client: int = Field(default=8, gt=0)
+    trusted_hosts: str = "localhost,127.0.0.1,testserver"
+    allowed_origins: str = "http://localhost,http://127.0.0.1"
+    trust_proxy_headers: bool = False
+    security_headers_enabled: bool = True
+    capture_raw_traces: bool = False
 
     # Auth
+    api_prefix: str = "/api/7r"
+
     auth_private_key_path: str = "keys/private.pem"
     auth_public_key_path: str = "keys/public.pem"
     access_token_expiry_seconds: int = 900
@@ -223,6 +235,8 @@ class Settings(BaseSettings, metaclass=SingletonSettings):
     azure_search_vector_field: str = "vector"
     azure_search_key_field: str = "id"
     azure_search_api_key: str = ""
+
+
 
     # Prompts
     load_prompts_from_db: bool = False

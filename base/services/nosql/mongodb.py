@@ -1,5 +1,4 @@
 import asyncio
-import math
 import time
 from typing import Any
 
@@ -13,6 +12,7 @@ from base.models.view_models.database import PaginatedResult, PaginationParams
 from base.services.common.meta import SingletonABC
 from base.services.configuration import settings
 from base.services.nosql import AbstractNoSQLService
+from base.tools import pagination
 from base.tools.errors import ServiceHealthCheckError
 
 
@@ -310,36 +310,17 @@ class MongoDBService(AbstractNoSQLService, metaclass=SingletonABC):
         projection: dict[str, Any] | None = None,
         sort: list[tuple[str, int]] | None = None,
     ) -> PaginatedResult[dict[str, Any]]:
-        total: int = self.count(collection, filter)
-        total_pages: int = (
-            math.ceil(total / page_params.size) if page_params.size > 0 else 0
-        )
-
-        if total == 0 or page_params.page > total_pages:
-            return PaginatedResult(
-                data=[],
-                page=page_params.page,
-                size=page_params.size,
-                total=total,
-                total_pages=total_pages,
-            )
-
-        offset: int = (page_params.page - 1) * page_params.size
-        data: list[dict[str, Any]] = self.find_many(
-            collection,
-            filter,
-            projection=projection,
-            sort=sort,
-            skip=offset,
-            limit=page_params.size,
-        )
-
-        return PaginatedResult(
-            data=data,
-            page=page_params.page,
-            size=page_params.size,
-            total=total,
-            total_pages=total_pages,
+        return pagination.paginate(
+            self.count(collection, filter),
+            page_params,
+            lambda skip, limit: self.find_many(
+                collection,
+                filter,
+                projection=projection,
+                sort=sort,
+                skip=skip,
+                limit=limit,
+            ),
         )
 
     async def apaginate(
@@ -350,36 +331,17 @@ class MongoDBService(AbstractNoSQLService, metaclass=SingletonABC):
         projection: dict[str, Any] | None = None,
         sort: list[tuple[str, int]] | None = None,
     ) -> PaginatedResult[dict[str, Any]]:
-        total: int = await self.acount(collection, filter)
-        total_pages: int = (
-            math.ceil(total / page_params.size) if page_params.size > 0 else 0
-        )
-
-        if total == 0 or page_params.page > total_pages:
-            return PaginatedResult(
-                data=[],
-                page=page_params.page,
-                size=page_params.size,
-                total=total,
-                total_pages=total_pages,
-            )
-
-        offset: int = (page_params.page - 1) * page_params.size
-        data: list[dict[str, Any]] = await self.afind_many(
-            collection,
-            filter,
-            projection=projection,
-            sort=sort,
-            skip=offset,
-            limit=page_params.size,
-        )
-
-        return PaginatedResult(
-            data=data,
-            page=page_params.page,
-            size=page_params.size,
-            total=total,
-            total_pages=total_pages,
+        return await pagination.apaginate(
+            await self.acount(collection, filter),
+            page_params,
+            lambda skip, limit: self.afind_many(
+                collection,
+                filter,
+                projection=projection,
+                sort=sort,
+                skip=skip,
+                limit=limit,
+            ),
         )
 
     def create_collection_vector_index(
@@ -455,14 +417,14 @@ class MongoDBService(AbstractNoSQLService, metaclass=SingletonABC):
         definition = {"fields": fields}
         coll = self._aget_database()[collection]
 
-        if await self._search_index_exists_async(coll, index_name):
+        if await self._asearch_index_exists(coll, index_name):
             try:
                 await coll.update_search_index(index_name, definition)
                 return
             except OperationFailure:
                 pass
             await coll.drop_search_index(index_name)
-            await self._wait_for_search_index_drop_async(coll, index_name)
+            await self._await_search_index_drop(coll, index_name)
 
         await coll.create_search_index(
             SearchIndexModel(
@@ -481,7 +443,7 @@ class MongoDBService(AbstractNoSQLService, metaclass=SingletonABC):
         return bool(existing)
 
     @staticmethod
-    async def _search_index_exists_async(coll: Any, index_name: str) -> bool:
+    async def _asearch_index_exists(coll: Any, index_name: str) -> bool:
         try:
             cursor = await coll.list_search_indexes(name=index_name)
             existing = await cursor.to_list(length=1)
@@ -511,14 +473,14 @@ class MongoDBService(AbstractNoSQLService, metaclass=SingletonABC):
         )
 
     @classmethod
-    async def _wait_for_search_index_drop_async(
+    async def _await_search_index_drop(
         cls,
         coll: Any,
         index_name: str,
     ) -> None:
         deadline = time.monotonic() + cls.INDEX_DROP_WAIT_TIMEOUT_S
         while time.monotonic() < deadline:
-            if not await cls._search_index_exists_async(coll, index_name):
+            if not await cls._asearch_index_exists(coll, index_name):
                 return
             await asyncio.sleep(cls.INDEX_DROP_WAIT_INTERVAL_S)
         raise OperationFailure(

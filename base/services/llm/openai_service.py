@@ -1,11 +1,8 @@
 import time
 
-from httpx import Timeout
 from openai import (
     AsyncOpenAI,
     AsyncStream,
-    DefaultAsyncHttpxClient,
-    DefaultHttpxClient,
     OpenAI,
     OpenAIError,
     Stream,
@@ -60,9 +57,12 @@ from base.models.view_models.streams import (
     StreamStart,
 )
 from base.services.common.meta import KeyedSingleton
+from base.services.configuration import settings
 from base.services.execution_context import ExecutionContext
 from base.services.llm.error_handler import OpenAIErrorHandler
 from base.services.logging.console import ConsoleLoggerService
+from base.services.usage import UsageTracker
+from base.tools import openai_clients
 from base.tools.stream import StreamIterator
 
 
@@ -137,37 +137,12 @@ class OpenAIService(metaclass=KeyedSingleton):
         kwargs.setdefault("temperature", self.DEFAULT_TEMPERATURE)
 
     def _initialize_clients(self) -> tuple[OpenAI, AsyncOpenAI]:
-        base_url: str | None = self._config.api_host or None
-
-        if self._config.api_type == ProviderType.AZURE_OPENAI:
-            if not base_url:
-                raise LLMConfigError("api_host is required for Azure OpenAI")
-
-            base_url = base_url.rstrip("/")
-            if not base_url.endswith("/openai/v1"):
-                base_url = f"{base_url}/openai/v1"
-            base_url = f"{base_url}/"
-
-        timeout = Timeout(
-            self.DEFAULT_TIMEOUT_TOTAL,
-            connect=self.DEFAULT_TIMEOUT_CONNECT,
-        )
-
-        return (
-            OpenAI(
-                api_key=self._config.api_key,
-                base_url=base_url,
-                timeout=timeout,
-                max_retries=0,
-                http_client=DefaultHttpxClient(http2=True),
-            ),
-            AsyncOpenAI(
-                api_key=self._config.api_key,
-                base_url=base_url,
-                timeout=timeout,
-                max_retries=0,
-                http_client=DefaultAsyncHttpxClient(http2=True),
-            ),
+        return openai_clients.create_clients(
+            api_key=self._config.api_key,
+            api_host=self._config.api_host,
+            api_type=self._config.api_type,
+            timeout_total=self.DEFAULT_TIMEOUT_TOTAL,
+            timeout_connect=self.DEFAULT_TIMEOUT_CONNECT,
         )
 
     # Stream error helper
@@ -858,14 +833,23 @@ class OpenAIService(metaclass=KeyedSingleton):
         input_tokens, output_tokens, total_tokens = self._extract_token_counts(usage)
         effective_label = label or "openai"
 
+        UsageTracker().record(
+            model=self._model,
+            label=effective_label,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            duration_ms=duration_ms,
+            error=error,
+        )
+
         if self._execution_context.debug_trace.started_at:
             self._execution_context.debug_trace.calls.append(
                 DebugCall(
                     agent=effective_label.split(":", 1)[0],
                     label=effective_label,
                     model=self._model,
-                    prompt=list(prompt),
-                    response=response,
+                    prompt=list(prompt) if settings.capture_raw_traces else [],
+                    response=response if settings.capture_raw_traces else None,
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                     total_tokens=total_tokens,
