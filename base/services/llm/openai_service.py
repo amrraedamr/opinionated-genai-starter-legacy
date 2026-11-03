@@ -57,6 +57,7 @@ from base.models.view_models.streams import (
     StreamStart,
 )
 from base.services.common.meta import KeyedSingleton
+from base.services.configuration import settings
 from base.services.execution_context import ExecutionContext
 from base.services.llm.error_handler import OpenAIErrorHandler
 from base.services.logging.console import ConsoleLoggerService
@@ -847,8 +848,8 @@ class OpenAIService(metaclass=KeyedSingleton):
                     agent=effective_label.split(":", 1)[0],
                     label=effective_label,
                     model=self._model,
-                    prompt=list(prompt),
-                    response=response,
+                    prompt=list(prompt) if settings.capture_raw_traces else [],
+                    response=response if settings.capture_raw_traces else None,
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                     total_tokens=total_tokens,

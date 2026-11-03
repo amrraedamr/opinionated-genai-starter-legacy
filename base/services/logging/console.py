@@ -4,13 +4,14 @@ from typing import Any
 
 from base.models.definitions.exceptions import ExceptionCategory
 from base.services.common.meta import Singleton
+from base.services.configuration import settings
 from base.services.logging import LogMessage
-from base.services.logging.config import LOGGING_CONFIG
+from base.services.logging.config import get_logging_config
 
 
 class ConsoleLoggerService(metaclass=Singleton):
     def __init__(self) -> None:
-        logging.config.dictConfig(LOGGING_CONFIG)
+        logging.config.dictConfig(get_logging_config(settings.environment))
         self._logger: logging.Logger = logging.getLogger()
 
     def info(self, message: LogMessage, *args: Any) -> None:

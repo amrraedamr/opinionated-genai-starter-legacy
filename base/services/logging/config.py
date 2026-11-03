@@ -26,9 +26,27 @@ LOGGING_CONFIG = {
             "stream": "ext://sys.stdout",
         },
     },
-    # ✅ use the dedicated "root" key
     "root": {
         "handlers": ["console"],
         "level": "INFO",
     },
 }
+
+
+def get_logging_config(environment: str) -> dict:
+    config = dict(LOGGING_CONFIG)
+    if environment != "local":
+        config["formatters"] = {
+            "json": {
+                "()": "base.services.logging.json_formatter.JsonFormatter",
+            }
+        }
+        config["handlers"] = {
+            "console": {
+                "level": "INFO",
+                "class": "logging.StreamHandler",
+                "formatter": "json",
+                "stream": "ext://sys.stdout",
+            }
+        }
+    return config

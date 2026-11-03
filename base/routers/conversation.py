@@ -30,6 +30,7 @@ from base.services.agents.test import TestAgent
 from base.services.auth.dependencies import validate_user_dependency
 from base.services.background_tasks.in_memory import InMemoryBackgroundTaskService
 from base.services.chat_history import ChatHistoryService
+from base.services.common.meta import Stored, scope_id
 from base.services.execution_context import ExecutionContext
 from base.services.logging.console import ConsoleLoggerService
 from base.services.store.chat_history.sql import SqlChatHistoryStore
@@ -138,6 +139,7 @@ async def send_message(
     )
 
     stream_iterator: StreamIterator | None = None
+    request_scope_id = scope_id.get()
 
     async def run() -> str:
         try:
@@ -181,6 +183,8 @@ async def send_message(
             logger.error(f"send_message run failed: {e}")
             await stream_iterator.asend(StreamError(error_code=500, text=str(e)))
             raise
+        finally:
+            Stored.delete_scope(request_scope_id)
 
     if streaming:
         stream_iterator = StreamIterator()
@@ -214,7 +218,17 @@ async def get_messages(
     return BaseResponse(
         data=ListChatResponse(
             messages=[
-                ChatMessageView(**message.serialize(by_alias=False))
+                ChatMessageView(
+                    **message.serialize(
+                        by_alias=False,
+                        exclude={"metadata"},
+                    ),
+                    metadata={
+                        key: value
+                        for key, value in message.metadata.items()
+                        if key != "debug"
+                    },
+                )
                 for message in stored
             ]
         )

@@ -99,12 +99,12 @@ left out of the money rather than counted as free.
 **Storage you can swap.** `AbstractStore[T]` for row-keyed entities,
 `AbstractSequenceStore` for ordered items under a parent. One concrete SQL
 implementation covers the CRUD, so a new store is its model and the columns
-that are its own. Backends are held to a shared conformance suite, so "it
-works with Mongo too" is a test rather than a claim.
+that are its own.
 
 **The rest of the plumbing.** Redis or in-memory cache, Azure Blob, Key Vault,
-Qdrant / Azure AI Search / Mongo Atlas vectors, a prompt service with hot
-reload, SSE streaming, structured error handling, and background tasks.
+Qdrant / Azure AI Search / Mongo Atlas vectors, a prompt service with
+optional database-backed overrides and reload, SSE streaming, structured
+error handling, and background tasks.
 
 ---
 
@@ -152,18 +152,19 @@ The defaults run on SQLite with local JWT keys, so a clone works before you
 have configured anything. `.env.example` documents the rest, grouped by what
 turns a feature on.
 
+Non-local environments emit structured JSON logs with request IDs and secret
+redaction. Raw LLM prompts and responses are not persisted unless
+`CAPTURE_RAW_TRACES=true`; normal history responses never expose trace
+metadata.
+
 ---
 
 ## Working on it
 
 ```bash
-uv run pytest            # 122 tests, no infrastructure required
 uv run ruff check .
 uv run pre-commit install
 ```
-
-Tests run against a throwaway SQLite database and deterministic fakes, so the
-suite is green on a fresh clone without a single container.
 
 Changed a model? Generate the migration rather than writing it:
 
@@ -178,13 +179,23 @@ uv run alembic revision --autogenerate -m "what changed"
 ## Deployment
 
 A single `Dockerfile` builds the app. `run.sh` picks Uvicorn locally and
-Gunicorn with Uvicorn workers elsewhere, running migrations first when
-`RUN_MIGRATIONS` is set.
+Gunicorn with Uvicorn workers in production. Migrations should run as a
+separate job, not once per replica. See
+[`deploy/docker-compose.production.yml`](deploy/docker-compose.production.yml)
+and [`deploy/README.md`](deploy/README.md) for a working example. The API
+provides `/livez` and dependency-aware `/readyz`.
 
 ```bash
 docker build -t genai-api .
-docker run -p 8000:8000 --env-file .env genai-api
+cp production.env.example .env.production
+# Fill the database, model, and secret settings first.
+docker compose -f deploy/docker-compose.production.yml up --build
 ```
+
+The built-in rate and concurrency controls are single-process protections.
+For multi-replica production deployments, enforce quotas at an external
+gateway or with Redis; this starter intentionally does not add distributed
+quota infrastructure.
 
 ---
 

@@ -1,0 +1,41 @@
+services:
+  migrate:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env.production
+    secrets:
+      - auth_private_key
+      - auth_public_key
+    entrypoint: [".venv/bin/alembic"]
+    command: ["upgrade", "head"]
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env.production
+    secrets:
+      - auth_private_key
+      - auth_public_key
+    environment:
+      RUN_MIGRATIONS: ""
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "health_check.py"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+secrets:
+  auth_private_key:
+    file: ../keys/private.pem
+  auth_public_key:
+    file: ../keys/public.pem

@@ -44,8 +44,8 @@ the call errored before producing a usage block."""
 class DebugCall(BaseModel):
     """One LLM call captured at the OpenAIService boundary.
 
-    ``prompt`` and ``response`` are the verbatim inputs / outputs the
-    model saw. The ``label`` is usually the agent class name;
+    ``prompt`` and ``response`` are captured only when explicitly enabled.
+    The ``label`` is usually the agent class name;
     per-item fanout calls suffix the item_id (e.g.
     ``XAgent:0001``) so the trace shows each fan-out
     call distinctly.
