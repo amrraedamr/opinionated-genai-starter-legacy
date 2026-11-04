@@ -1,3 +1,13 @@
+> **This repository has been superseded.**
+>
+> Development continues at
+> [amrraedamr/opinionated-genai-starter](https://github.com/amrraedamr/opinionated-genai-starter),
+> which supports both a single-service deployment and a multi-service split from
+> one codebase. This repository is archived and kept as a read-only reference for
+> anyone mid-project on the original layout.
+
+---
+
 # Opinionated GenAI Starter
 
 [![CI](https://github.com/amrraedamr/opinionated-genai-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/amrraedamr/opinionated-genai-starter/actions/workflows/ci.yml)
